@@ -28,6 +28,32 @@ import (
 	"os"
 )
 
+type coordinate struct {
+	x int
+	y int
+}
+
+const (
+	startX = 1
+	endX   = 13
+	startY = 0
+	endY   = 6
+)
+
+var (
+	position map[int]coordinate = map[int]coordinate{
+		1: {3, 1},
+		2: {7, 1},
+		3: {11, 1},
+		4: {3, 3},
+		5: {7, 3},
+		6: {11, 3},
+		7: {3, 5},
+		8: {7, 5},
+		9: {11, 5},
+	}
+)
+
 func drawText(x, y int, text string) {
 	colorDefault := termbox.ColorDefault
 	for _, ch := range text {
@@ -39,113 +65,58 @@ func drawText(x, y int, text string) {
 func drawBoard() {
 	colorDefault := termbox.ColorDefault
 
-	// TODO: refactor this code
-
-	// first horizontal line
-	for x := 1; x <= 13; x++ {
-		var c rune
-		if x == 1 {
-			c = '\u2554'
-		} else if x == 13 {
-			c = '\u2557'
-		} else {
-			c = '\u2550'
+	// 4 horizontal lines
+	for line := startY; line <= endY; line += 2 {
+		for x := startX; x <= endX; x++ {
+			c := '\u2550'
+			termbox.SetCell(x, line, c, colorDefault, colorDefault)
 		}
-		termbox.SetCell(x, 0, c, colorDefault, colorDefault)
 	}
 
-	// second horizontal line
-	for x := 1; x <= 13; x++ {
-		var c rune
-		if x == 1 {
-			c = '\u2560'
-		} else if x == 13 {
-			c = '\u2563'
-		} else {
-			c = '\u2550'
+	// 4 vertical lines
+	for line := startX; line <= endX; line += 4 {
+		for y := startY; y <= endY; y++ {
+			c := '\u2551'
+			termbox.SetCell(line, y, c, colorDefault, colorDefault)
 		}
-		termbox.SetCell(x, 2, c, colorDefault, colorDefault)
 	}
 
-	// third horizontal line
-	for x := 1; x <= 13; x++ {
-		var c rune
-		if x == 1 {
-			c = '\u2560'
-		} else if x == 13 {
-			c = '\u2563'
-		} else {
-			c = '\u2550'
+	// prettify the board
+	for y := startY; y <= endY; y += 2 {
+		for x := startX; x <= endX; x += 4 {
+			var c rune
+			if y == startY && x == startX {
+				c = '\u2554'
+			} else if y == startY && (x == startX+4 || x == startX+8) {
+				c = '\u2566'
+			} else if y == startY && x == endX {
+				c = '\u2557'
+			} else if (y == startY+2 || y == startY+4) && x == startX {
+				c = '\u2560'
+			} else if (y == startY+2 || y == startY+4) && x == endX {
+				c = '\u2563'
+			} else if y == endY && x == startX {
+				c = '\u255A'
+			} else if y == endY && (x == startX+4 || x == startX+8) {
+				c = '\u2569'
+			} else if y == endY && x == endX {
+				c = '\u255D'
+			} else {
+				c = '\u256C'
+			}
+			termbox.SetCell(x, y, c, colorDefault, colorDefault)
 		}
-		termbox.SetCell(x, 4, c, colorDefault, colorDefault)
 	}
 
-	// fourth horizontal line
-	for x := 1; x <= 13; x++ {
-		var c rune
-		if x == 1 {
-			c = '\u255A'
-		} else if x == 13 {
-			c = '\u255D'
-		} else {
-			c = '\u2550'
-		}
-		termbox.SetCell(x, 6, c, colorDefault, colorDefault)
-	}
-
-	// first vertical line
-	for y := 1; y <= 5; y++ {
-		var c rune
-		c = '\u2551'
-		termbox.SetCell(1, y, c, colorDefault, colorDefault)
-	}
-
-	// second vertical line
-	for y := 0; y <= 6; y++ {
-		var c rune
-		if y == 0 {
-			c = '\u2566'
-		} else if y == 2 || y == 4 {
-			c = '\u256C'
-		} else if y == 6 {
-			c = '\u2569'
-		} else {
-			c = '\u2551'
-		}
-		termbox.SetCell(5, y, c, colorDefault, colorDefault)
-	}
-
-	// third vertical line
-	for y := 0; y <= 6; y++ {
-		var c rune
-		if y == 0 {
-			c = '\u2566'
-		} else if y == 2 || y == 4 {
-			c = '\u256C'
-		} else if y == 6 {
-			c = '\u2569'
-		} else {
-			c = '\u2551'
-		}
-		termbox.SetCell(9, y, c, colorDefault, colorDefault)
-	}
-
-	// fourth
-	for y := 1; y <= 5; y++ {
-		var c rune
-		c = '\u2551'
-		termbox.SetCell(13, y, c, colorDefault, colorDefault)
-	}
-
-	termbox.SetCell(3, 1, 'O', colorDefault, colorDefault)
-	termbox.SetCell(7, 1, 'X', colorDefault, colorDefault)
-	termbox.SetCell(11, 1, 'X', colorDefault, colorDefault)
-	termbox.SetCell(3, 3, 'O', colorDefault, colorDefault)
-	termbox.SetCell(7, 3, 'X', colorDefault, colorDefault)
-	termbox.SetCell(11, 3, 'O', colorDefault, colorDefault)
-	termbox.SetCell(3, 5, 'X', colorDefault, colorDefault)
-	termbox.SetCell(7, 5, 'X', colorDefault, colorDefault)
-	termbox.SetCell(11, 5, 'O', colorDefault, colorDefault)
+	termbox.SetCell(position[1].x, position[1].y, 'O', colorDefault, colorDefault)
+	termbox.SetCell(position[2].x, position[2].y, 'X', colorDefault, colorDefault)
+	termbox.SetCell(position[3].x, position[3].y, 'X', colorDefault, colorDefault)
+	termbox.SetCell(position[4].x, position[4].y, 'O', colorDefault, colorDefault)
+	termbox.SetCell(position[5].x, position[5].y, 'X', colorDefault, colorDefault)
+	termbox.SetCell(position[6].x, position[6].y, 'O', colorDefault, colorDefault)
+	termbox.SetCell(position[7].x, position[7].y, 'X', colorDefault, colorDefault)
+	termbox.SetCell(position[8].x, position[8].y, 'X', colorDefault, colorDefault)
+	termbox.SetCell(position[9].x, position[9].y, 'O', colorDefault, colorDefault)
 }
 
 func redrawAll() {
