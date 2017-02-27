@@ -183,28 +183,25 @@ exitGame:
 	for {
 		select {
 		case ev := <-eventQueue:
-			switch ev.Key {
-			case termbox.KeyEsc:
+			if ev.Key == termbox.KeyEsc {
 				break exitGame
-			}
-			switch ev.Ch {
-			case '1':
+			} else if ev.Ch == '1' {
 				setX(1)
-			case '2':
+			} else if ev.Ch == '2' {
 				setX(2)
-			case '3':
+			} else if ev.Ch == '3' {
 				setX(3)
-			case '4':
+			} else if ev.Ch == '4' {
 				setX(4)
-			case '5':
+			} else if ev.Ch == '5' {
 				setX(5)
-			case '6':
+			} else if ev.Ch == '6' {
 				setX(6)
-			case '7':
+			} else if ev.Ch == '7' {
 				setX(7)
-			case '8':
+			} else if ev.Ch == '8' {
 				setX(8)
-			case '9':
+			} else if ev.Ch == '9' {
 				setX(9)
 			}
 		}
