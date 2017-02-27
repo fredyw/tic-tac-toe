@@ -41,16 +41,22 @@ const (
 )
 
 var (
-	position = map[int]coordinate{
-		1: {3, 1},
-		2: {7, 1},
-		3: {11, 1},
-		4: {3, 3},
-		5: {7, 3},
-		6: {11, 3},
-		7: {3, 5},
-		8: {7, 5},
-		9: {11, 5},
+	position = map[string]coordinate{
+		"0|0": {3, 1},
+		"0|1": {7, 1},
+		"0|2": {11, 1},
+		"1|0": {3, 3},
+		"1|1": {7, 3},
+		"1|2": {11, 3},
+		"2|0": {3, 5},
+		"2|1": {7, 5},
+		"2|2": {11, 5},
+	}
+	// 3x3 board
+	board = [][]rune{
+		{' ', ' ', ' '},
+		{' ', ' ', ' '},
+		{' ', ' ', ' '},
 	}
 )
 
@@ -108,15 +114,42 @@ func drawBoard() {
 		}
 	}
 
-	termbox.SetCell(position[1].x, position[1].y, 'O', colorDefault, colorDefault)
-	termbox.SetCell(position[2].x, position[2].y, 'X', colorDefault, colorDefault)
-	termbox.SetCell(position[3].x, position[3].y, 'X', colorDefault, colorDefault)
-	termbox.SetCell(position[4].x, position[4].y, 'O', colorDefault, colorDefault)
-	termbox.SetCell(position[5].x, position[5].y, 'X', colorDefault, colorDefault)
-	termbox.SetCell(position[6].x, position[6].y, 'O', colorDefault, colorDefault)
-	termbox.SetCell(position[7].x, position[7].y, 'X', colorDefault, colorDefault)
-	termbox.SetCell(position[8].x, position[8].y, 'X', colorDefault, colorDefault)
-	termbox.SetCell(position[9].x, position[9].y, 'O', colorDefault, colorDefault)
+	for i := range board {
+		for j := range board[i] {
+			symbol := board[i][j]
+			drawSymbol(fmt.Sprintf("%d|%d", i, j), symbol)
+		}
+	}
+}
+
+func drawSymbol(key string, symbol rune) {
+	colorDefault := termbox.ColorDefault
+	termbox.SetCell(position[key].x, position[key].y, symbol, colorDefault, colorDefault)
+}
+
+func setX(pos int) {
+	row, col, err := getRowCol(pos)
+	if err != nil {
+		return
+	}
+	board[row][col] = 'X'
+}
+
+func setO(pos int) {
+	row, col, err := getRowCol(pos)
+	if err != nil {
+		return
+	}
+	board[row][col] = 'O'
+}
+
+func getRowCol(pos int) (row, col int, err error) {
+	if pos <= 0 || pos >= 10 {
+		return 0, 0, fmt.Errorf("Invalid position: %d", pos)
+	}
+	row = (pos - 1) / 3
+	col = (pos - 1) % 3
+	return row, col, nil
 }
 
 func redrawAll() {
@@ -153,6 +186,26 @@ exitGame:
 			switch ev.Key {
 			case termbox.KeyEsc:
 				break exitGame
+			}
+			switch ev.Ch {
+			case '1':
+				setX(1)
+			case '2':
+				setX(2)
+			case '3':
+				setX(3)
+			case '4':
+				setX(4)
+			case '5':
+				setX(5)
+			case '6':
+				setX(6)
+			case '7':
+				setX(7)
+			case '8':
+				setX(8)
+			case '9':
+				setX(9)
 			}
 		}
 		redrawAll()

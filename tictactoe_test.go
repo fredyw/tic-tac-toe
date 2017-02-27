@@ -21,3 +21,82 @@
 // SOFTWARE.
 
 package main
+
+import (
+	"runtime/debug"
+	"testing"
+)
+
+func TestGetRowCol(t *testing.T) {
+	row, col, err := getRowCol(1)
+	assertEquals(t, 0, row)
+	assertEquals(t, 0, col)
+	assertNil(t, err)
+
+	row, col, err = getRowCol(2)
+	assertEquals(t, 0, row)
+	assertEquals(t, 1, col)
+	assertNil(t, err)
+
+	row, col, err = getRowCol(3)
+	assertEquals(t, 0, row)
+	assertEquals(t, 2, col)
+	assertNil(t, err)
+
+	row, col, err = getRowCol(4)
+	assertEquals(t, 1, row)
+	assertEquals(t, 0, col)
+	assertNil(t, err)
+
+	row, col, err = getRowCol(5)
+	assertEquals(t, 1, row)
+	assertEquals(t, 1, col)
+	assertNil(t, err)
+
+	row, col, err = getRowCol(6)
+	assertEquals(t, 1, row)
+	assertEquals(t, 2, col)
+	assertNil(t, err)
+
+	row, col, err = getRowCol(7)
+	assertEquals(t, 2, row)
+	assertEquals(t, 0, col)
+	assertNil(t, err)
+
+	row, col, err = getRowCol(8)
+	assertEquals(t, 2, row)
+	assertEquals(t, 1, col)
+	assertNil(t, err)
+
+	row, col, err = getRowCol(9)
+	assertEquals(t, 2, row)
+	assertEquals(t, 2, col)
+	assertNil(t, err)
+
+	_, _, err = getRowCol(0)
+	assertNotNil(t, err)
+
+	_, _, err = getRowCol(10)
+	assertNotNil(t, err)
+}
+
+func assertEquals(t *testing.T, expected, actual interface{}) {
+	if expected != actual {
+		debug.PrintStack()
+		t.Fail()
+	}
+}
+
+func assertNil(t *testing.T, object interface{}) {
+	if object != nil {
+		debug.PrintStack()
+		t.Fail()
+	}
+}
+
+func assertNotNil(t *testing.T, object interface{}) {
+	if object == nil {
+		debug.PrintStack()
+		t.Fail()
+	}
+}
