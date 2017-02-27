@@ -41,7 +41,7 @@ const (
 )
 
 var (
-	position map[int]coordinate = map[int]coordinate{
+	position = map[int]coordinate{
 		1: {3, 1},
 		2: {7, 1},
 		3: {11, 1},
