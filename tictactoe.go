@@ -25,6 +25,7 @@ package main
 import (
 	"fmt"
 	"github.com/nsf/termbox-go"
+	"github.com/urfave/cli"
 	"os"
 )
 
@@ -190,6 +191,7 @@ exitGame:
 			} else if ev.Ch == '2' {
 				setX(2)
 			} else if ev.Ch == '3' {
+				fmt.Println("three")
 				setX(3)
 			} else if ev.Ch == '4' {
 				setX(4)
@@ -209,11 +211,75 @@ exitGame:
 	}
 }
 
+func startServer(name string, port uint) error {
+	return nil
+}
+
+func startClient(name, host string, port uint) error {
+	return nil
+}
+
 func errorAndExit(message interface{}) {
 	fmt.Println(message)
 	os.Exit(1)
 }
 
 func main() {
-	runGame()
+	app := cli.NewApp()
+	app.Name = "tic-tac-toe"
+	app.Commands = []cli.Command{
+		{
+			Name:  "client",
+			Usage: "Tic-tac-toe client",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "name",
+					Usage: "Player name",
+					Value: "Player 1",
+				},
+				cli.StringFlag{
+					Name:  "host",
+					Usage: "Host name",
+					Value: "localhost",
+				},
+				cli.UintFlag{
+					Name:  "port",
+					Usage: "Port number",
+					Value: 8888,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				fmt.Println(len(c.Args()))
+				if len(c.Args()) == 0 {
+					cli.ShowSubcommandHelp(c)
+					return nil
+				}
+				return startClient(c.String("name"), c.String("host"), c.Uint("port"))
+			},
+		},
+		{
+			Name:  "server",
+			Usage: "Tic-tac-toe server",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "name",
+					Usage: "Player name",
+					Value: "Player 2",
+				},
+				cli.UintFlag{
+					Name:  "port",
+					Usage: "Port number",
+					Value: 8888,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				if len(c.Args()) == 0 {
+					cli.ShowSubcommandHelp(c)
+					return nil
+				}
+				return startServer(c.String("name"), c.Uint("port"))
+			},
+		},
+	}
+	app.Run(os.Args)
 }
