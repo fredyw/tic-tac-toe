@@ -132,7 +132,7 @@ func drawSymbol(key string, symbol rune) {
 	termbox.SetCell(position[key].x, position[key].y, symbol, colorDefault, colorDefault)
 }
 
-func setSymbol(game *Game, pos int, symbol rune, done chan bool) {
+func setSymbol(game *Game, pos int, symbol rune) {
 	row, col, err := getRowCol(pos)
 	if err != nil {
 		return
@@ -141,7 +141,6 @@ func setSymbol(game *Game, pos int, symbol rune, done chan bool) {
 		return
 	}
 	game.Board[row][col] = symbol
-	done <- true
 }
 
 func getRowCol(pos int) (int, int, error) {
@@ -173,10 +172,13 @@ func startGame(player uint, conn *websocket.Conn) {
 	}
 	defer termbox.Close()
 
-	eventQueue := make(chan termbox.Event, 1)
+	eventQueue := make(chan termbox.Event)
+	done := make(chan bool)
+
 	go func() {
 		for {
 			eventQueue <- termbox.PollEvent()
+			<-done
 		}
 	}()
 
@@ -197,11 +199,9 @@ func startGame(player uint, conn *websocket.Conn) {
 	}
 	drawAll(game, player, "")
 
-	done := make(chan bool, 0)
-
 	if player == 2 {
 		conn.ReadJSON(&game)
-		drawAll(game, player, "")
+		drawAll(game, player, "Ready...")
 	}
 
 exitGame:
@@ -211,29 +211,29 @@ exitGame:
 			if ev.Key == termbox.KeyEsc {
 				break exitGame
 			} else if ev.Ch == '1' {
-				setSymbol(game, 1, symbol, done)
+				setSymbol(game, 1, symbol)
 			} else if ev.Ch == '2' {
-				setSymbol(game, 2, symbol, done)
+				setSymbol(game, 2, symbol)
 			} else if ev.Ch == '3' {
-				setSymbol(game, 3, symbol, done)
+				setSymbol(game, 3, symbol)
 			} else if ev.Ch == '4' {
-				setSymbol(game, 4, symbol, done)
+				setSymbol(game, 4, symbol)
 			} else if ev.Ch == '5' {
-				setSymbol(game, 5, symbol, done)
+				setSymbol(game, 5, symbol)
 			} else if ev.Ch == '6' {
-				setSymbol(game, 6, symbol, done)
+				setSymbol(game, 6, symbol)
 			} else if ev.Ch == '7' {
-				setSymbol(game, 7, symbol, done)
+				setSymbol(game, 7, symbol)
 			} else if ev.Ch == '8' {
-				setSymbol(game, 8, symbol, done)
+				setSymbol(game, 8, symbol)
 			} else if ev.Ch == '9' {
-				setSymbol(game, 9, symbol, done)
+				setSymbol(game, 9, symbol)
 			}
-		case <-done:
 			conn.WriteJSON(game)
-			drawAll(game, player, "")
+			drawAll(game, player, "Waiting...")
 			conn.ReadJSON(&game)
-			drawAll(game, player, "")
+			drawAll(game, player, "Ready...")
+			done <- true
 		}
 	}
 }
@@ -243,6 +243,119 @@ func flip(player uint) uint {
 		return 2
 	}
 	return 1
+}
+
+func endGame(game *Game) rune {
+	for row := 0; row < 3; row++ {
+		for col := 0; col < 3; col++ {
+			current := game.Board[row][col]
+
+			// top
+			if row-2 >= 0 {
+				found := true
+				for r := row; r >= 0; r-- {
+					if current != game.Board[r][col] {
+						found = false
+					}
+				}
+				if found {
+					return current
+				}
+			}
+
+			// top right
+			if row-2 >= 0 && col+2 < 3 {
+				found := true
+				for r, c := row, col; r >= 0 && c < 3; r, c = r-1, c+1 {
+					if current != game.Board[r][c] {
+						found = false
+					}
+				}
+				if found {
+					return current
+				}
+			}
+
+			// right
+			if col+2 < 3 {
+				found := true
+				for c := col; c < 3; c++ {
+					if current != game.Board[row][c] {
+						found = false
+					}
+				}
+				if found {
+					return current
+				}
+			}
+
+			// bottom right
+			if row+2 < 3 && col+2 < 3 {
+				found := true
+				for r, c := row, col; r < 3 && c < 3; r, c = r+1, c+1 {
+					if current != game.Board[r][c] {
+						found = false
+					}
+				}
+				if found {
+					return current
+				}
+			}
+
+			// bottom
+			if row+2 < 3 {
+				found := true
+				for r := row; r < 3; r++ {
+					if current != game.Board[r][col] {
+						found = false
+					}
+				}
+				if found {
+					return current
+				}
+			}
+
+			// bottom left
+			if row+2 < 3 && col-2 >= 0 {
+				found := true
+				for r, c := row, col; r < 3 && c >= 0; r, c = r+1, c-1 {
+					if current != game.Board[r][c] {
+						found = false
+					}
+				}
+				if found {
+					return current
+				}
+			}
+
+			// left
+			if col-2 >= 0 {
+				found := true
+				for c := col; c >= 0; c-- {
+					if current != game.Board[row][c] {
+						found = false
+					}
+				}
+				if found {
+					return current
+				}
+			}
+
+			// top left
+			if row-2 >= 0 && col-2 >= 0 {
+				found := true
+				for r, c := row, col; r >= 0 && c >= 0; r, c = r-1, c-1 {
+					if current != game.Board[r][c] {
+						found = false
+					}
+				}
+				if found {
+					return current
+				}
+			}
+		}
+	}
+	return ' '
 }
 
 func startServer(name string, port uint) error {

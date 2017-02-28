@@ -80,6 +80,80 @@ func TestGetRowCol(t *testing.T) {
 	assertNotNil(t, err)
 }
 
+func TestEndGame(t *testing.T) {
+	game := &Game{
+		Board: [][]rune{
+			{' ', ' ', ' '},
+			{' ', ' ', ' '},
+			{' ', ' ', ' '},
+		},
+	}
+	assertEquals(t, ' ', endGame(game))
+
+	game = &Game{
+		Board: [][]rune{
+			{'X', ' ', ' '},
+			{'X', 'O', 'X'},
+			{'X', 'O', ' '},
+		},
+	}
+	assertEquals(t, 'X', endGame(game))
+
+	game = &Game{
+		Board: [][]rune{
+			{'X', ' ', ' '},
+			{'O', 'X', ' '},
+			{'X', ' ', 'X'},
+		},
+	}
+	assertEquals(t, 'X', endGame(game))
+
+	game = &Game{
+		Board: [][]rune{
+			{'O', 'O', 'O'},
+			{'O', 'X', 'O'},
+			{'X', 'O', 'X'},
+		},
+	}
+	assertEquals(t, 'O', endGame(game))
+
+	game = &Game{
+		Board: [][]rune{
+			{'O', 'X', 'O'},
+			{'X', 'O', 'O'},
+			{'X', 'X', 'X'},
+		},
+	}
+	assertEquals(t, 'X', endGame(game))
+
+	game = &Game{
+		Board: [][]rune{
+			{'O', 'X', 'O'},
+			{'X', 'O', 'O'},
+			{'O', 'X', 'X'},
+		},
+	}
+	assertEquals(t, 'O', endGame(game))
+
+	game = &Game{
+		Board: [][]rune{
+			{'O', 'X', 'O'},
+			{'O', 'O', 'O'},
+			{'X', 'O', 'X'},
+		},
+	}
+	assertEquals(t, 'O', endGame(game))
+
+	game = &Game{
+		Board: [][]rune{
+			{'X', 'X', 'X'},
+			{'O', ' ', 'O'},
+			{'X', 'O', 'X'},
+		},
+	}
+	assertEquals(t, 'X', endGame(game))
+}
+
 func assertEquals(t *testing.T, expected, actual interface{}) {
 	if expected != actual {
 		debug.PrintStack()
