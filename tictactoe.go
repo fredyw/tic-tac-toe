@@ -43,6 +43,11 @@ const (
 	endY   = 6
 )
 
+// Game is a struct to store game information.
+type Game struct {
+	Board [][]rune
+}
+
 var (
 	position = map[string]coordinate{
 		"0|0": {3, 1},
@@ -55,11 +60,13 @@ var (
 		"2|1": {7, 5},
 		"2|2": {11, 5},
 	}
-	// 3x3 board
-	board = [][]rune{
-		{' ', ' ', ' '},
-		{' ', ' ', ' '},
-		{' ', ' ', ' '},
+	game = Game{
+		// 3x3 board
+		Board: [][]rune{
+			{' ', ' ', ' '},
+			{' ', ' ', ' '},
+			{' ', ' ', ' '},
+		},
 	}
 )
 
@@ -117,9 +124,9 @@ func drawBoard() {
 		}
 	}
 
-	for i := range board {
-		for j := range board[i] {
-			symbol := board[i][j]
+	for i := range game.Board {
+		for j := range game.Board[i] {
+			symbol := game.Board[i][j]
 			drawSymbol(fmt.Sprintf("%d|%d", i, j), symbol)
 		}
 	}
@@ -135,7 +142,7 @@ func setX(pos int) {
 	if err != nil {
 		return
 	}
-	board[row][col] = 'X'
+	game.Board[row][col] = 'X'
 }
 
 func setO(pos int) {
@@ -143,7 +150,7 @@ func setO(pos int) {
 	if err != nil {
 		return
 	}
-	board[row][col] = 'O'
+	game.Board[row][col] = 'O'
 }
 
 func getRowCol(pos int) (row, col int, err error) {
