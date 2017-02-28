@@ -24,11 +24,13 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 
+	"github.com/gorilla/websocket"
 	"github.com/nsf/termbox-go"
 	"github.com/urfave/cli"
+	"net/http"
+	"net/url"
 )
 
 type coordinate struct {
@@ -37,10 +39,11 @@ type coordinate struct {
 }
 
 const (
-	startX = 1
-	endX   = 13
-	startY = 0
-	endY   = 6
+	startX  = 1
+	endX    = 13
+	startY  = 0
+	endY    = 6
+	apiPath = "/tictactoe"
 )
 
 // Game is a struct to store game information.
@@ -60,14 +63,6 @@ var (
 		"2|1": {7, 5},
 		"2|2": {11, 5},
 	}
-	game = Game{
-		// 3x3 board
-		Board: [][]rune{
-			{' ', ' ', ' '},
-			{' ', ' ', ' '},
-			{' ', ' ', ' '},
-		},
-	}
 )
 
 func drawText(x, y int, text string) {
@@ -78,7 +73,7 @@ func drawText(x, y int, text string) {
 	}
 }
 
-func drawBoard() {
+func drawBoard(game *Game) {
 	colorDefault := termbox.ColorDefault
 
 	// 4 horizontal lines
@@ -137,58 +132,78 @@ func drawSymbol(key string, symbol rune) {
 	termbox.SetCell(position[key].x, position[key].y, symbol, colorDefault, colorDefault)
 }
 
-func setX(pos int) {
+func setSymbol(game *Game, pos int, symbol rune, done chan bool) {
 	row, col, err := getRowCol(pos)
 	if err != nil {
 		return
 	}
-	game.Board[row][col] = 'X'
-}
-
-func setO(pos int) {
-	row, col, err := getRowCol(pos)
-	if err != nil {
+	if game.Board[row][col] != ' ' {
 		return
 	}
-	game.Board[row][col] = 'O'
+	game.Board[row][col] = symbol
+	done <- true
 }
 
-func getRowCol(pos int) (row, col int, err error) {
+func getRowCol(pos int) (int, int, error) {
 	if pos <= 0 || pos >= 10 {
 		return 0, 0, fmt.Errorf("Invalid position: %d", pos)
 	}
-	row = (pos - 1) / 3
-	col = (pos - 1) % 3
+	row := (pos - 1) / 3
+	col := (pos - 1) % 3
 	return row, col, nil
 }
 
-func redrawAll() {
+func drawAll(game *Game, player uint, debug string) {
 	colorDefault := termbox.ColorDefault
 	termbox.Clear(colorDefault, colorDefault)
 
-	drawBoard()
-	drawText(15, 1, "Player 1's turn:")
+	drawBoard(game)
+	drawText(15, 1, fmt.Sprintf("Player %d's turn:", player))
 	drawText(15, 2, "(1, 2, 3, 4, 5, 6, 7, 8, 9)")
 	drawText(2, 7, "Created by Fredy Wijaya")
+	drawText(2, 8, "DEBUG: "+debug)
 
 	termbox.Flush()
 }
 
-func startGame() {
+func startGame(player uint, conn *websocket.Conn) {
 	err := termbox.Init()
 	if err != nil {
 		errorAndExit(err)
 	}
 	defer termbox.Close()
 
-	eventQueue := make(chan termbox.Event)
+	eventQueue := make(chan termbox.Event, 1)
 	go func() {
 		for {
 			eventQueue <- termbox.PollEvent()
 		}
 	}()
 
-	redrawAll()
+	var symbol rune
+	if player == 1 {
+		symbol = 'X'
+	} else {
+		symbol = 'O'
+	}
+
+	game := &Game{
+		// 3x3 board
+		Board: [][]rune{
+			{' ', ' ', ' '},
+			{' ', ' ', ' '},
+			{' ', ' ', ' '},
+		},
+	}
+	drawAll(game, player, "")
+
+	done := make(chan bool, 0)
+
+	if player == 2 {
+		conn.ReadJSON(&game)
+		drawAll(game, player, "")
+	}
+
 exitGame:
 	for {
 		select {
@@ -196,38 +211,63 @@ exitGame:
 			if ev.Key == termbox.KeyEsc {
 				break exitGame
 			} else if ev.Ch == '1' {
-				setX(1)
+				setSymbol(game, 1, symbol, done)
 			} else if ev.Ch == '2' {
-				setX(2)
+				setSymbol(game, 2, symbol, done)
 			} else if ev.Ch == '3' {
-				setX(3)
+				setSymbol(game, 3, symbol, done)
 			} else if ev.Ch == '4' {
-				setX(4)
+				setSymbol(game, 4, symbol, done)
 			} else if ev.Ch == '5' {
-				setX(5)
+				setSymbol(game, 5, symbol, done)
 			} else if ev.Ch == '6' {
-				setX(6)
+				setSymbol(game, 6, symbol, done)
 			} else if ev.Ch == '7' {
-				setX(7)
+				setSymbol(game, 7, symbol, done)
 			} else if ev.Ch == '8' {
-				setX(8)
+				setSymbol(game, 8, symbol, done)
 			} else if ev.Ch == '9' {
-				setX(9)
+				setSymbol(game, 9, symbol, done)
 			}
+		case <-done:
+			conn.WriteJSON(game)
+			drawAll(game, player, "")
+			conn.ReadJSON(&game)
+			drawAll(game, player, "")
 		}
-		redrawAll()
 	}
 }
 
+func flip(player uint) uint {
+	if player == 1 {
+		return 2
+	}
+	return 1
+}
+
 func startServer(name string, port uint) error {
-	http.HandleFunc("/tictactoe", func(w http.ResponseWriter, req *http.Request) {
-		startGame()
+	upgrader := websocket.Upgrader{}
+	http.HandleFunc(apiPath, func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		startGame(2, conn)
 	})
 	fmt.Println("Waiting for Tic-Tac-Toe client to connect...")
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
 func startClient(name, host string, port uint) error {
+	fmt.Println("Connecting to Tic-Tac-Teo server...")
+	u := url.URL{Scheme: "ws", Host: fmt.Sprintf("%s:%d", host, port), Path: apiPath}
+	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	startGame(1, conn)
 	return nil
 }
 
