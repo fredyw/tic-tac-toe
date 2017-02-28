@@ -24,9 +24,11 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+
 	"github.com/nsf/termbox-go"
 	"github.com/urfave/cli"
-	"os"
 )
 
 type coordinate struct {
@@ -165,7 +167,7 @@ func redrawAll() {
 	termbox.Flush()
 }
 
-func runGame() {
+func startGame() {
 	err := termbox.Init()
 	if err != nil {
 		errorAndExit(err)
@@ -191,7 +193,6 @@ exitGame:
 			} else if ev.Ch == '2' {
 				setX(2)
 			} else if ev.Ch == '3' {
-				fmt.Println("three")
 				setX(3)
 			} else if ev.Ch == '4' {
 				setX(4)
@@ -212,7 +213,11 @@ exitGame:
 }
 
 func startServer(name string, port uint) error {
-	return nil
+	http.HandleFunc("/tictactoe", func(w http.ResponseWriter, req *http.Request) {
+		startGame()
+	})
+	fmt.Println("Waiting for Tic-Tac-Toe client to connect...")
+	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
 func startClient(name, host string, port uint) error {
@@ -230,7 +235,7 @@ func main() {
 	app.Commands = []cli.Command{
 		{
 			Name:  "client",
-			Usage: "Tic-tac-toe client",
+			Usage: "Tic-Tac-Toe client",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "name",
@@ -249,17 +254,12 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				fmt.Println(len(c.Args()))
-				if len(c.Args()) == 0 {
-					cli.ShowSubcommandHelp(c)
-					return nil
-				}
 				return startClient(c.String("name"), c.String("host"), c.Uint("port"))
 			},
 		},
 		{
 			Name:  "server",
-			Usage: "Tic-tac-toe server",
+			Usage: "Tic-Tac-Toe server",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "name",
@@ -273,10 +273,6 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				if len(c.Args()) == 0 {
-					cli.ShowSubcommandHelp(c)
-					return nil
-				}
 				return startServer(c.String("name"), c.Uint("port"))
 			},
 		},
