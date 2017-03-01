@@ -5,12 +5,12 @@ A multiplayer Tic-Tac-Toe game written in Go. It uses websocket for client and s
     go get -u github.com/fredyw/tic-tac-toe
     
 ### Usage:
-Server:
+**Server:**
 ```
 ./tic-tac-toe server [--port]
 ```
 
-Client:
+**Client:**
 ```
 ./tic-tac-toe client [--host] [--port]
 ```
