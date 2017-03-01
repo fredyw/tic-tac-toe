@@ -1,5 +1,5 @@
 # tic-tac-toe
-A multiplayer Tic-Tac-Toe game written in Go.
+A multiplayer Tic-Tac-Toe game written in Go. It uses websocket for client and server communication.
 
 ### Installation
     go get -u github.com/fredyw/tic-tac-toe
