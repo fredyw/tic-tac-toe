@@ -205,7 +205,10 @@ func startGame(player uint, conn *websocket.Conn) {
 	}()
 
 	if player == 2 {
+		drawAll(game, []string{nextTurn})
 		conn.ReadJSON(&game)
+		drawAll(game, []string{yourTurn, availablePositions(game)})
+	} else {
 		drawAll(game, []string{yourTurn, availablePositions(game)})
 	}
 
