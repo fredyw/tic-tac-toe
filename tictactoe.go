@@ -136,7 +136,7 @@ func drawSymbol(key string, symbol rune) {
 	termbox.SetCell(position[key].x, position[key].y, symbol, colorDefault, colorDefault)
 }
 
-func setSymbol(game *Game, pos int, symbol rune) {
+func setSymbol(game *Game, pos int, symbol rune, updateFunc func()) {
 	row, col, err := getRowCol(pos)
 	if err != nil {
 		return
@@ -144,7 +144,10 @@ func setSymbol(game *Game, pos int, symbol rune) {
 	if game.Board[row][col] != ' ' {
 		return
 	}
+
 	game.Board[row][col] = symbol
+
+	updateFunc()
 }
 
 func getRowCol(pos int) (int, int, error) {
@@ -194,50 +197,64 @@ func startGame(player uint, conn *websocket.Conn) {
 	}
 	drawAll(game, []string{})
 
+	eventQueue := make(chan termbox.Event)
+	go func() {
+		for {
+			eventQueue <- termbox.PollEvent()
+		}
+	}()
+
 	if player == 2 {
 		conn.ReadJSON(&game)
 		drawAll(game, []string{yourTurn, availablePositions(game)})
 	}
 
 	winner := ' '
-
-exitGame:
-	for {
-		ev := termbox.PollEvent()
-		if ev.Key == termbox.KeyEsc {
-			break exitGame
-		} else if ev.Ch == '1' {
-			setSymbol(game, 1, symbol)
-		} else if ev.Ch == '2' {
-			setSymbol(game, 2, symbol)
-		} else if ev.Ch == '3' {
-			setSymbol(game, 3, symbol)
-		} else if ev.Ch == '4' {
-			setSymbol(game, 4, symbol)
-		} else if ev.Ch == '5' {
-			setSymbol(game, 5, symbol)
-		} else if ev.Ch == '6' {
-			setSymbol(game, 6, symbol)
-		} else if ev.Ch == '7' {
-			setSymbol(game, 7, symbol)
-		} else if ev.Ch == '8' {
-			setSymbol(game, 8, symbol)
-		} else if ev.Ch == '9' {
-			setSymbol(game, 9, symbol)
-		}
+	updateFunc := func() {
 		conn.WriteJSON(game)
 		drawAll(game, []string{nextTurn})
 		end := endGame(game)
 		if end != ' ' {
 			winner = end
-			break exitGame
+			return
 		}
 		conn.ReadJSON(&game)
 		drawAll(game, []string{yourTurn, availablePositions(game)})
 		end = endGame(game)
 		if end != ' ' {
 			winner = end
-			break exitGame
+			return
+		}
+	}
+
+exitGame:
+	for {
+		select {
+		case ev := <-eventQueue:
+			if ev.Key == termbox.KeyEsc {
+				break exitGame
+			} else if ev.Ch == '1' {
+				setSymbol(game, 1, symbol, updateFunc)
+			} else if ev.Ch == '2' {
+				setSymbol(game, 2, symbol, updateFunc)
+			} else if ev.Ch == '3' {
+				setSymbol(game, 3, symbol, updateFunc)
+			} else if ev.Ch == '4' {
+				setSymbol(game, 4, symbol, updateFunc)
+			} else if ev.Ch == '5' {
+				setSymbol(game, 5, symbol, updateFunc)
+			} else if ev.Ch == '6' {
+				setSymbol(game, 6, symbol, updateFunc)
+			} else if ev.Ch == '7' {
+				setSymbol(game, 7, symbol, updateFunc)
+			} else if ev.Ch == '8' {
+				setSymbol(game, 8, symbol, updateFunc)
+			} else if ev.Ch == '9' {
+				setSymbol(game, 9, symbol, updateFunc)
+			}
+			if winner != ' ' {
+				break exitGame
+			}
 		}
 	}
 
