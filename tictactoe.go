@@ -25,12 +25,14 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
+
+	"net/http"
+	"net/url"
 
 	"github.com/gorilla/websocket"
 	"github.com/nsf/termbox-go"
 	"github.com/urfave/cli"
-	"net/http"
-	"net/url"
 )
 
 type coordinate struct {
@@ -39,11 +41,13 @@ type coordinate struct {
 }
 
 const (
-	startX  = 1
-	endX    = 13
-	startY  = 0
-	endY    = 6
-	apiPath = "/tictactoe"
+	startX   = 1
+	endX     = 13
+	startY   = 0
+	endY     = 6
+	apiPath  = "/tictactoe"
+	yourTurn = "Your turn"
+	nextTurn = "Another player's turn"
 )
 
 // Game is a struct to store game information.
@@ -152,13 +156,14 @@ func getRowCol(pos int) (int, int, error) {
 	return row, col, nil
 }
 
-func drawAll(game *Game, player uint, debug string) {
+func drawAll(game *Game, player uint, status []string, debug string) {
 	colorDefault := termbox.ColorDefault
 	termbox.Clear(colorDefault, colorDefault)
 
 	drawBoard(game)
-	drawText(15, 1, fmt.Sprintf("Player %d's turn:", player))
-	drawText(15, 2, "(1, 2, 3, 4, 5, 6, 7, 8, 9)")
+	for i, msg := range status {
+		drawText(15, startY+i+1, msg)
+	}
 	drawText(2, 7, "Created by Fredy Wijaya")
 	drawText(2, 8, "DEBUG: "+debug)
 
@@ -197,11 +202,11 @@ func startGame(player uint, conn *websocket.Conn) {
 			{' ', ' ', ' '},
 		},
 	}
-	drawAll(game, player, "")
+	drawAll(game, player, []string{}, "")
 
 	if player == 2 {
 		conn.ReadJSON(&game)
-		drawAll(game, player, "Ready...")
+		drawAll(game, player, []string{yourTurn, availablePositions(game)}, "")
 	}
 
 exitGame:
@@ -230,12 +235,26 @@ exitGame:
 				setSymbol(game, 9, symbol)
 			}
 			conn.WriteJSON(game)
-			drawAll(game, player, "Waiting...")
+			drawAll(game, player, []string{nextTurn}, "")
 			conn.ReadJSON(&game)
-			drawAll(game, player, "Ready...")
+			drawAll(game, player, []string{yourTurn, availablePositions(game)}, "")
 			done <- true
 		}
 	}
+}
+
+func availablePositions(game *Game) string {
+	numbers := []string{}
+	number := 1
+	for i := range game.Board {
+		for j := range game.Board[i] {
+			if game.Board[i][j] == ' ' {
+				numbers = append(numbers, fmt.Sprintf("%d", number))
+			}
+			number++
+		}
+	}
+	return fmt.Sprintf("(%s)", strings.Join(numbers, ", "))
 }
 
 func flip(player uint) uint {
@@ -358,7 +377,7 @@ func endGame(game *Game) rune {
 	return ' '
 }
 
-func startServer(name string, port uint) error {
+func startServer(port uint) error {
 	upgrader := websocket.Upgrader{}
 	http.HandleFunc(apiPath, func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -372,7 +391,7 @@ func startServer(name string, port uint) error {
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
-func startClient(name, host string, port uint) error {
+func startClient(host string, port uint) error {
 	fmt.Println("Connecting to Tic-Tac-Teo server...")
 	u := url.URL{Scheme: "ws", Host: fmt.Sprintf("%s:%d", host, port), Path: apiPath}
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -398,11 +417,6 @@ func main() {
 			Usage: "Tic-Tac-Toe client",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:  "name",
-					Usage: "Player name",
-					Value: "Player 1",
-				},
-				cli.StringFlag{
 					Name:  "host",
 					Usage: "Host name",
 					Value: "localhost",
@@ -414,18 +428,13 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				return startClient(c.String("name"), c.String("host"), c.Uint("port"))
+				return startClient(c.String("host"), c.Uint("port"))
 			},
 		},
 		{
 			Name:  "server",
 			Usage: "Tic-Tac-Toe server",
 			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "name",
-					Usage: "Player name",
-					Value: "Player 2",
-				},
 				cli.UintFlag{
 					Name:  "port",
 					Usage: "Port number",
@@ -433,7 +442,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				return startServer(c.String("name"), c.Uint("port"))
+				return startServer(c.Uint("port"))
 			},
 		},
 	}
