@@ -197,7 +197,7 @@ func startGame(player uint, conn *websocket.Conn) {
 	}
 	drawAll(game, []string{})
 
-	eventQueue := make(chan termbox.Event)
+	eventQueue := make(chan termbox.Event, 64)
 	go func() {
 		for {
 			eventQueue <- termbox.PollEvent()
@@ -222,6 +222,10 @@ func startGame(player uint, conn *websocket.Conn) {
 			return
 		}
 		conn.ReadJSON(&game)
+		// make sure to drain every key event triggered while blocking to read JSON data
+		for len(eventQueue) > 0 {
+			<-eventQueue
+		}
 		drawAll(game, []string{yourTurn, availablePositions(game)})
 		end = endGame(game)
 		if end != ' ' {
