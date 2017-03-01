@@ -48,6 +48,7 @@ const (
 	apiPath  = "/tictactoe"
 	yourTurn = "Your turn"
 	nextTurn = "Another player's turn"
+	author   = "Created by Fredy Wijaya"
 )
 
 // Game is a struct to store game information.
@@ -136,7 +137,7 @@ func drawSymbol(key string, symbol rune) {
 	termbox.SetCell(position[key].x, position[key].y, symbol, colorDefault, colorDefault)
 }
 
-func setSymbol(game *Game, pos int, symbol rune) {
+func setSymbol(game *Game, pos int, symbol rune, updateFunc func()) {
 	row, col, err := getRowCol(pos)
 	if err != nil {
 		return
@@ -145,6 +146,9 @@ func setSymbol(game *Game, pos int, symbol rune) {
 		return
 	}
 	game.Board[row][col] = symbol
+
+	updateFunc()
+
 }
 
 func getRowCol(pos int) (int, int, error) {
@@ -156,7 +160,7 @@ func getRowCol(pos int) (int, int, error) {
 	return row, col, nil
 }
 
-func drawAll(game *Game, player uint, status []string, debug string) {
+func drawAll(game *Game, status []string) {
 	colorDefault := termbox.ColorDefault
 	termbox.Clear(colorDefault, colorDefault)
 
@@ -164,8 +168,7 @@ func drawAll(game *Game, player uint, status []string, debug string) {
 	for i, msg := range status {
 		drawText(15, startY+i+1, msg)
 	}
-	drawText(2, 7, "Created by Fredy Wijaya")
-	drawText(2, 8, "DEBUG: "+debug)
+	drawText(2, 7, author)
 
 	termbox.Flush()
 }
@@ -176,16 +179,6 @@ func startGame(player uint, conn *websocket.Conn) {
 		errorAndExit(err)
 	}
 	defer termbox.Close()
-
-	eventQueue := make(chan termbox.Event)
-	done := make(chan bool)
-
-	go func() {
-		for {
-			eventQueue <- termbox.PollEvent()
-			<-done
-		}
-	}()
 
 	var symbol rune
 	if player == 1 {
@@ -202,43 +195,42 @@ func startGame(player uint, conn *websocket.Conn) {
 			{' ', ' ', ' '},
 		},
 	}
-	drawAll(game, player, []string{}, "")
+	drawAll(game, []string{})
 
 	if player == 2 {
 		conn.ReadJSON(&game)
-		drawAll(game, player, []string{yourTurn, availablePositions(game)}, "")
+		drawAll(game, []string{yourTurn, availablePositions(game)})
 	}
 
+	updateFunc := func() {
+		conn.WriteJSON(game)
+		drawAll(game, []string{nextTurn})
+		conn.ReadJSON(&game)
+		drawAll(game, []string{yourTurn, availablePositions(game)})
+	}
 exitGame:
 	for {
-		select {
-		case ev := <-eventQueue:
-			if ev.Key == termbox.KeyEsc {
-				break exitGame
-			} else if ev.Ch == '1' {
-				setSymbol(game, 1, symbol)
-			} else if ev.Ch == '2' {
-				setSymbol(game, 2, symbol)
-			} else if ev.Ch == '3' {
-				setSymbol(game, 3, symbol)
-			} else if ev.Ch == '4' {
-				setSymbol(game, 4, symbol)
-			} else if ev.Ch == '5' {
-				setSymbol(game, 5, symbol)
-			} else if ev.Ch == '6' {
-				setSymbol(game, 6, symbol)
-			} else if ev.Ch == '7' {
-				setSymbol(game, 7, symbol)
-			} else if ev.Ch == '8' {
-				setSymbol(game, 8, symbol)
-			} else if ev.Ch == '9' {
-				setSymbol(game, 9, symbol)
-			}
-			conn.WriteJSON(game)
-			drawAll(game, player, []string{nextTurn}, "")
-			conn.ReadJSON(&game)
-			drawAll(game, player, []string{yourTurn, availablePositions(game)}, "")
-			done <- true
+		ev := termbox.PollEvent()
+		if ev.Key == termbox.KeyEsc {
+			break exitGame
+		} else if ev.Ch == '1' {
+			setSymbol(game, 1, symbol, updateFunc)
+		} else if ev.Ch == '2' {
+			setSymbol(game, 2, symbol, updateFunc)
+		} else if ev.Ch == '3' {
+			setSymbol(game, 3, symbol, updateFunc)
+		} else if ev.Ch == '4' {
+			setSymbol(game, 4, symbol, updateFunc)
+		} else if ev.Ch == '5' {
+			setSymbol(game, 5, symbol, updateFunc)
+		} else if ev.Ch == '6' {
+			setSymbol(game, 6, symbol, updateFunc)
+		} else if ev.Ch == '7' {
+			setSymbol(game, 7, symbol, updateFunc)
+		} else if ev.Ch == '8' {
+			setSymbol(game, 8, symbol, updateFunc)
+		} else if ev.Ch == '9' {
+			setSymbol(game, 9, symbol, updateFunc)
 		}
 	}
 }
@@ -255,13 +247,6 @@ func availablePositions(game *Game) string {
 		}
 	}
 	return fmt.Sprintf("(%s)", strings.Join(numbers, ", "))
-}
-
-func flip(player uint) uint {
-	if player == 1 {
-		return 2
-	}
-	return 1
 }
 
 func endGame(game *Game) rune {
@@ -374,7 +359,7 @@ func endGame(game *Game) rune {
 			}
 		}
 	}
-	return ' '
+	return 'D'
 }
 
 func startServer(port uint) error {

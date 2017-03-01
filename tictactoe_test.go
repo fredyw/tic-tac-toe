@@ -152,6 +152,15 @@ func TestEndGame(t *testing.T) {
 		},
 	}
 	assertEquals(t, 'X', endGame(game))
+
+	game = &Game{
+		Board: [][]rune{
+			{'O', 'X', 'O'},
+			{'O', 'X', 'O'},
+			{'X', 'O', 'X'},
+		},
+	}
+	assertEquals(t, 'D', endGame(game))
 }
 
 func assertEquals(t *testing.T, expected, actual interface{}) {
