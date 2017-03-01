@@ -48,7 +48,6 @@ const (
 	apiPath  = "/tictactoe"
 	yourTurn = "Your turn"
 	nextTurn = "Another player's turn"
-	author   = "Created by Fredy Wijaya"
 )
 
 // Game is a struct to store game information.
@@ -137,7 +136,7 @@ func drawSymbol(key string, symbol rune) {
 	termbox.SetCell(position[key].x, position[key].y, symbol, colorDefault, colorDefault)
 }
 
-func setSymbol(game *Game, pos int, symbol rune, updateFunc func()) {
+func setSymbol(game *Game, pos int, symbol rune) {
 	row, col, err := getRowCol(pos)
 	if err != nil {
 		return
@@ -146,9 +145,6 @@ func setSymbol(game *Game, pos int, symbol rune, updateFunc func()) {
 		return
 	}
 	game.Board[row][col] = symbol
-
-	updateFunc()
-
 }
 
 func getRowCol(pos int) (int, int, error) {
@@ -168,7 +164,8 @@ func drawAll(game *Game, status []string) {
 	for i, msg := range status {
 		drawText(15, startY+i+1, msg)
 	}
-	drawText(2, 7, author)
+	drawText(15, 5, "Press ESC to quit")
+	drawText(2, 7, "Created by Fredy Wijaya")
 
 	termbox.Flush()
 }
@@ -202,37 +199,73 @@ func startGame(player uint, conn *websocket.Conn) {
 		drawAll(game, []string{yourTurn, availablePositions(game)})
 	}
 
-	updateFunc := func() {
-		conn.WriteJSON(game)
-		drawAll(game, []string{nextTurn})
-		conn.ReadJSON(&game)
-		drawAll(game, []string{yourTurn, availablePositions(game)})
-	}
+	winner := ' '
+
 exitGame:
 	for {
 		ev := termbox.PollEvent()
 		if ev.Key == termbox.KeyEsc {
 			break exitGame
 		} else if ev.Ch == '1' {
-			setSymbol(game, 1, symbol, updateFunc)
+			setSymbol(game, 1, symbol)
 		} else if ev.Ch == '2' {
-			setSymbol(game, 2, symbol, updateFunc)
+			setSymbol(game, 2, symbol)
 		} else if ev.Ch == '3' {
-			setSymbol(game, 3, symbol, updateFunc)
+			setSymbol(game, 3, symbol)
 		} else if ev.Ch == '4' {
-			setSymbol(game, 4, symbol, updateFunc)
+			setSymbol(game, 4, symbol)
 		} else if ev.Ch == '5' {
-			setSymbol(game, 5, symbol, updateFunc)
+			setSymbol(game, 5, symbol)
 		} else if ev.Ch == '6' {
-			setSymbol(game, 6, symbol, updateFunc)
+			setSymbol(game, 6, symbol)
 		} else if ev.Ch == '7' {
-			setSymbol(game, 7, symbol, updateFunc)
+			setSymbol(game, 7, symbol)
 		} else if ev.Ch == '8' {
-			setSymbol(game, 8, symbol, updateFunc)
+			setSymbol(game, 8, symbol)
 		} else if ev.Ch == '9' {
-			setSymbol(game, 9, symbol, updateFunc)
+			setSymbol(game, 9, symbol)
+		}
+		conn.WriteJSON(game)
+		drawAll(game, []string{nextTurn})
+		end := endGame(game)
+		if end != ' ' {
+			winner = end
+			break exitGame
+		}
+		conn.ReadJSON(&game)
+		drawAll(game, []string{yourTurn, availablePositions(game)})
+		end = endGame(game)
+		if end != ' ' {
+			winner = end
+			break exitGame
 		}
 	}
+
+	if hasWinner(winner) {
+		msg := ""
+		if winner == 'D' {
+			msg = "DRAW"
+		} else if winner == symbol {
+			msg = "YOU WIN"
+		} else {
+			msg = "YOU LOSE"
+		}
+		drawAll(game, []string{msg})
+	endGame:
+		for {
+			switch ev := termbox.PollEvent(); ev.Type {
+			case termbox.EventKey:
+				switch ev.Key {
+				case termbox.KeyEsc:
+					break endGame
+				}
+			}
+		}
+	}
+}
+
+func hasWinner(winner rune) bool {
+	return winner == 'D' || winner == 'O' || winner == 'X'
 }
 
 func availablePositions(game *Game) string {
@@ -250,9 +283,13 @@ func availablePositions(game *Game) string {
 }
 
 func endGame(game *Game) rune {
+	blankCount := 0
 	for row := 0; row < 3; row++ {
 		for col := 0; col < 3; col++ {
 			current := game.Board[row][col]
+			if current == ' ' {
+				blankCount++
+			}
 
 			// top
 			if row-2 >= 0 {
@@ -359,7 +396,10 @@ func endGame(game *Game) rune {
 			}
 		}
 	}
-	return 'D'
+	if blankCount == 0 {
+		return 'D'
+	}
+	return ' '
 }
 
 func startServer(port uint) error {
